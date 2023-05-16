@@ -1,3 +1,4 @@
+import unittest
 from tkinter import *
 from tkinter import filedialog
 from rdkit import Chem
@@ -5,6 +6,11 @@ from rdkit.Chem import Draw
 from rdkit.Chem import AllChem
 from openbabel import openbabel as ob
 import numpy
+
+class TestCalculation(unittest.TestCase):
+    def test(self):
+        mol = convert_file_to_rdkit_via_openbabel("acenes/geom00.xyz")
+        self.assertAlmostEqual(getEigs_second_voisin(mol)[0], 15.6935, 4)
 
 class Interface:
     def __init__(self, master):
@@ -40,29 +46,13 @@ class Interface:
         return
 
 # fonction pour lire un fichier XYZ et afficher la structure moléculaire
-def load_structure_(interface):
-    filename = filedialog.askopenfilename(filetypes=[("Fichiers XYZ", "*.xyz")]) # ouvrir une boîte de dialogue pour choisir un fichier
-    if filename:
-        with open(filename, 'r') as f:
-            lines = f.readlines()
-        num_atoms = int(lines[0]) # nombre d'atomes dans la molécule
-        atoms = []
-        coords = []
-        for i in range(2, num_atoms+2):
-            tokens = lines[i].split()
-            atoms.append(tokens[0])
-            coords.append([float(tokens[1]), float(tokens[2]), float(tokens[3])])
-        str = "{}\n\n".format(num_atoms)
-        str = str + '\n'.join([f"{atoms[i]} {coords[i][0]} {coords[i][1]} {coords[i][2]}" for i in range(num_atoms)])
-        mol = Chem.MolFromXYZBlock(str) # créer une molécule à partir des coordonnées
-        mol.AddBond(mol.GetAtomWithIdx(0).GetIdx(), mol.GetAtomWithIdx(1).GetIdx(), Chem.rdchem.BondType.SINGLE)
-        if not(mol):
-            print("Erreur lors de la lecture du fichier")
-    interface.show_molecule(mol)
-    return
-
 def load_structure(interface):
     filename = filedialog.askopenfilename(filetypes=[("Fichiers XYZ", "*.xyz")]) # ouvrir une boîte de dialogue pour choisir un fichier
+    mol_rdkit = convert_file_to_rdkit_via_openbabel(filename)
+    interface.show_molecule(mol_rdkit)
+    return
+
+def convert_file_to_rdkit_via_openbabel(filename):
     # créer un objet OBMol vide
     mol_ob = ob.OBMol()
 
@@ -71,8 +61,7 @@ def load_structure(interface):
     obConversion.SetInAndOutFormats("xyz", "mol")
     obConversion.ReadFile(mol_ob, filename)
     mol_rdkit = Chem.MolFromMolBlock(obConversion.WriteString(mol_ob))
-    interface.show_molecule(mol_rdkit)
-    return
+    return mol_rdkit
 
 def getEigs_premier_voisin(mol):
     mat = Chem.rdmolops.GetAdjacencyMatrix(mol).astype(numpy.float32)
